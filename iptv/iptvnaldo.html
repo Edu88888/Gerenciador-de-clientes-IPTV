@@ -1,122 +1,241 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Naldo IPTV - Gerenciador de Clientes</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #001f3f;
-            color: white;
-            text-align: center;
-            margin: 0;
-            padding: 0;
-        }
-        header {
-            background-color: #0056b3;
-            padding: 20px;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        .container {
-            margin: 20px auto;
-            max-width: 800px;
-            padding: 20px;
-            background-color: #003366;
-            border-radius: 10px;
-        }
-        input, button {
-            padding: 10px;
-            margin: 10px;
-            border: none;
-            border-radius: 5px;
-        }
-        input {
-            width: 80%;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        table {
-            width: 100%;
-            margin-top: 20px;
-            border-collapse: collapse;
-            background-color: white;
-            color: black;
-        }
-        th, td {
-            padding: 10px;
-            border: 1px solid black;
-        }
-        th {
-            background-color: #0056b3;
-            color: white;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Naldo IPTV - Gerenciamento de Clientes</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #002855;
+      color: white;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      background-color: #003366;
+      padding: 20px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+    table {
+      width: 90%;
+      margin: 20px auto;
+      border-collapse: collapse;
+      background: white;
+      color: black;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0px 0px 10px rgba(255, 255, 255, 0.2);
+    }
+    th, td {
+      padding: 15px;
+      border: 1px solid black;
+      text-align: left;
+    }
+    th {
+      background-color: #003366;
+      color: white;
+    }
+    .atrasado {
+      background-color: red;
+      color: white;
+    }
+    .pago {
+      background-color: green;
+      color: white;
+    }
+    .em-dia {
+      background-color: yellow;
+      color: black;
+    }
+    .container {
+      max-width: 1200px;
+      margin: auto;
+    }
+    .btn {
+      background-color: #004080;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .btn:hover {
+      background-color: #0055a5;
+    }
+    input {
+      padding: 10px;
+      margin: 5px;
+      border-radius: 5px;
+      border: 1px solid #003366;
+    }
+  </style>
 </head>
 <body>
-    <header>Naldo IPTV - Gerenciador de Clientes</header>
-    <div class="container">
-        <h2>Cadastro de Clientes</h2>
-        <input type="text" id="nome" placeholder="Nome do Cliente">
-        <input type="date" id="vencimento">
-        <input type="number" id="valor" placeholder="Valor a Pagar">
-        <button onclick="adicionarCliente()">Adicionar Cliente</button>
-
-        <h2>Lista de Clientes</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Vencimento</th>
-                    <th>Valor</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="listaClientes"></tbody>
-        </table>
+  <div class="container">
+    <h1>Naldo IPTV - Gerenciamento de Clientes</h1>
+    <br>
+    <input type="text" id="nome" placeholder="Nome do Cliente">
+    <input type="number" id="valor" placeholder="Valor">
+    <input type="date" id="vencimento">
+    <button class="btn" onclick="adicionarCliente()">Adicionar Cliente</button>
+    <button class="btn" onclick="limparCampos()">Limpar Campos</button>
+    <br><br>
+    
+    <!-- Filtros -->
+    <label for="status">Filtro de Status:</label>
+    <select id="status" onchange="atualizarTabela()">
+      <option value="todos">Todos</option>
+      <option value="atrasado">Atrasados</option>
+      <option value="pago">Pago</option>
+    </select>
+    <input type="text" id="pesquisa" placeholder="Pesquisar por nome" oninput="pesquisarCliente()">
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Valor (em RS)</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="clientes"></tbody>
+    </table>
+    
+    <div id="totals">
+      <p>Total de clientes: <span id="total-clientes">0</span></p>
+      <p>Total a pagar: RS <span id="total-pagar">0.00</span></p>
     </div>
-
-    <script>
-        let clientes = [];
-
-        function adicionarCliente() {
-            let nome = document.getElementById("nome").value;
-            let vencimento = document.getElementById("vencimento").value;
-            let valor = document.getElementById("valor").value;
-
-            if (nome && vencimento && valor) {
-                let cliente = { nome, vencimento, valor };
-                clientes.push(cliente);
-                atualizarTabela();
-            }
+  </div>
+  
+  <script>
+    let clientes = JSON.parse(localStorage.getItem('clientes')) || [];
+    let filtroStatus = "todos";
+    let pesquisaTexto = "";
+  
+    // Função para atualizar a tabela
+    function atualizarTabela() {
+      let tbody = document.getElementById("clientes");
+      tbody.innerHTML = "";
+      let hoje = new Date().toISOString().split("T")[0];
+  
+      let filtroClientes = clientes.filter(cliente => {
+        if (filtroStatus === "atrasado" && cliente.vencimento >= hoje) return false;
+        if (filtroStatus === "pago" && !cliente.pago) return false;
+        if (pesquisaTexto && !cliente.nome.toLowerCase().includes(pesquisaTexto.toLowerCase())) return false;
+        return true;
+      });
+  
+      filtroClientes.forEach((cliente, index) => {
+        let tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td contenteditable="true" onblur="editarCliente(${index}, 'nome', this.innerText)">${cliente.nome}</td>
+          <td contenteditable="true" onblur="editarCliente(${index}, 'valor', this.innerText)">${parseFloat(cliente.valor).toFixed(2)}</td>
+          <td contenteditable="true" onblur="editarCliente(${index}, 'vencimento', this.innerText)">${cliente.vencimento}</td>
+          <td class="${cliente.vencimento < hoje ? 'atrasado' : (cliente.pago ? 'pago' : 'em-dia')}">
+            ${cliente.vencimento < hoje ? 'Atrasado' : (cliente.pago ? 'Pago' : 'Em Dia')}
+          </td>
+          <td>
+            <button class="btn" onclick="removerCliente(${index})">Remover</button>
+            <button class="btn" onclick="marcarComoPago(${index})">Marcar como Pago</button>
+            <button class="btn" onclick="alterarData(${index})">Alterar Data</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+  
+      // Atualiza totais
+      let totalClientes = filtroClientes.length;
+      let totalPagar = filtroClientes.reduce((acc, cliente) => acc + parseFloat(cliente.valor), 0);
+      document.getElementById("total-clientes").textContent = totalClientes;
+      document.getElementById("total-pagar").textContent = totalPagar.toFixed(2);
+    }
+  
+    // Função para adicionar um novo cliente
+    function adicionarCliente() {
+      let nome = document.getElementById("nome").value;
+      let valor = parseFloat(document.getElementById("valor").value);
+      let vencimento = document.getElementById("vencimento").value;
+  
+      if (nome && !isNaN(valor) && vencimento) {
+        clientes.push({ nome, valor, vencimento, pago: false });
+        atualizarTabela();
+        salvarClientes();
+        limparCampos();  // Limpar os campos após adicionar
+      } else {
+        alert("Preencha todos os campos corretamente!");
+      }
+    }
+  
+    // Função para remover um cliente
+    function removerCliente(index) {
+      clientes.splice(index, 1);
+      atualizarTabela();
+      salvarClientes();
+    }
+  
+    // Função para editar os dados de um cliente
+    function editarCliente(index, campo, valor) {
+      if (campo === 'valor') {
+        // Remove todos os caracteres que não sejam dígitos, vírgula ou ponto
+        valor = valor.replace(/[^0-9.,-]/g, '').trim();
+        // Substitui vírgula por ponto, se necessário
+        valor = valor.replace(',', '.');
+        if (isNaN(valor) || valor === "") {
+          valor = clientes[index].valor; // Mantém o valor original se inválido
+        } else {
+          valor = parseFloat(valor);
         }
-
-        function atualizarTabela() {
-            let tabela = document.getElementById("listaClientes");
-            tabela.innerHTML = "";
-
-            clientes.forEach((cliente, index) => {
-                let row = `<tr>
-                    <td>${cliente.nome}</td>
-                    <td>${cliente.vencimento}</td>
-                    <td>R$ ${cliente.valor}</td>
-                    <td><button onclick="removerCliente(${index})">Remover</button></td>
-                </tr>`;
-                tabela.innerHTML += row;
-            });
-        }
-
-        function removerCliente(index) {
-            clientes.splice(index, 1);
-            atualizarTabela();
-        }
-    </script>
+      }
+      clientes[index][campo] = valor;
+      atualizarTabela();
+      salvarClientes();
+    }
+  
+    // Função para marcar um cliente como pago
+    function marcarComoPago(index) {
+      clientes[index].pago = true;
+      // Atualiza a data de vencimento para a data atual ao marcar como pago
+      clientes[index].vencimento = new Date().toISOString().split("T")[0];
+      atualizarTabela();
+      salvarClientes();
+    }
+  
+    // Função para alterar a data de vencimento de um cliente
+    function alterarData(index) {
+      let novaData = prompt("Digite a nova data de vencimento (AAAA-MM-DD):");
+      if (novaData) {
+        clientes[index].vencimento = novaData;
+        atualizarTabela();
+        salvarClientes();
+      }
+    }
+  
+    // Função para limpar os campos de input
+    function limparCampos() {
+      document.getElementById("nome").value = '';
+      document.getElementById("valor").value = '';
+      document.getElementById("vencimento").value = '';
+    }
+  
+    // Função para pesquisar clientes
+    function pesquisarCliente() {
+      pesquisaTexto = document.getElementById("pesquisa").value;
+      atualizarTabela();
+    }
+  
+    // Função para salvar dados no localStorage
+    function salvarClientes() {
+      localStorage.setItem('clientes', JSON.stringify(clientes));
+    }
+  
+    // Atualizar a tabela ao carregar a página
+    atualizarTabela();
+  </script>
 </body>
 </html>
